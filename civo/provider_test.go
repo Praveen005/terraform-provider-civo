@@ -27,7 +27,9 @@ func TestProvider_impl(t *testing.T) {
 func TestToken(t *testing.T) {
 	rawProvider := Provider()
 	raw := map[string]interface{}{
-		"token": "123456789",
+		// "token": "123456789",
+		// "credential_file": `C:\Users\Praveen Kumar\Documents\git-Praveen005\OSS\terraform-provider-civo\civo\cred.json`,
+		"credential_file": `${pwd}\cred.json`,
 	}
 
 	diags := rawProvider.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
