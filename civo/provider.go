@@ -136,17 +136,17 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 }
 
 func getToken(d *schema.ResourceData) (interface{}, bool) {
-	fmt.Println("Inside the get token function!")
 	var exists = true
+
 	// Check for CIVO_TOKEN environment variable
 	if token := os.Getenv("CIVO_TOKEN"); token != "" {
-		fmt.Println("Inside the OS.Getenv")
+		fmt.Println("[DEBUG]  looking for token in env. variable.")
 		return token, exists
 	}
 
 	// Check for credentials file specified in provider config
 	if credFile, ok := d.GetOk("credential_file"); ok {
-		fmt.Println("Inside the d.GetOk", credFile)
+		fmt.Println("[DEBUG]  looking for token in credential file.")
 		token, err := readTokenFromFile(credFile.(string))
 		if err == nil {
 			return token, exists
@@ -173,7 +173,7 @@ func readTokenFromFile(path string) (string, error) {
 	}
 
 	var config struct {
-		Token string `json:"token"`
+		Token string `json:"CIVO_TOKEN"`
 	}
 
 	if err := json.Unmarshal(data, &config); err != nil {

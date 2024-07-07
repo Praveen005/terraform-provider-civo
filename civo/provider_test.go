@@ -2,6 +2,8 @@ package civo
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"testing"
@@ -25,11 +27,31 @@ func TestProvider_impl(t *testing.T) {
 
 // TestToken tests the token configuration
 func TestToken(t *testing.T) {
+
+	// Create a temporary directory for test
+	tempDir, err := os.MkdirTemp("", "civo-provider-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	// cleanup after the test
+	defer os.RemoveAll(tempDir)
+
+	credentialFile := filepath.Join(tempDir, "credential.json")
+
+	credContent := `{"CIVO_TOKEN":"12345"}`
+	err = os.WriteFile(credentialFile, []byte(credContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write credentials file: %v", err)
+	}
+
+	const testToken = "12345"
+	os.Setenv("CIVO_TOKEN", testToken)
+	// cleanup after test
+	defer os.Unsetenv("CIVO_TOKEN")
 	rawProvider := Provider()
+
 	raw := map[string]interface{}{
-		// "token": "123456789",
-		// "credential_file": `C:\Users\Praveen Kumar\Documents\git-Praveen005\OSS\terraform-provider-civo\civo\cred.json`,
-		"credential_file": `${pwd}\cred.json`,
+		"credential_file": credentialFile,
 	}
 
 	diags := rawProvider.Configure(context.Background(), terraform.NewResourceConfigRaw(raw))
