@@ -37,6 +37,13 @@ var (
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
+			"token": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("CIVO_TOKEN", ""),
+				Deprecated:  "\"token\" attribute is deprecated. Moving forward, please use \"credential_file\" attribute.",
+				Description: "This is the Civo API token. Alternatively, this can also be specified using `CIVO_TOKEN` environment variable.",
+			},
 			"credential_file": {
 				Type:        schema.TypeString,
 				Optional:    true,
@@ -111,6 +118,8 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 	if token, ok := getToken(d); ok {
 		tokenValue = token.(string)
+		fmt.Println("[DEBUG] PRINTING TOKEN finally: ", tokenValue)
+
 	} else {
 		return nil, fmt.Errorf("[ERR] token not found")
 	}
@@ -139,13 +148,15 @@ func getToken(d *schema.ResourceData) (interface{}, bool) {
 	var exists = true
 
 	// Check for CIVO_TOKEN environment variable
-	if token := os.Getenv("CIVO_TOKEN"); token != "" {
+	if token, ok := d.GetOk("token"); ok {
+		fmt.Println("[DEBUG] PRINTING TOKEN from variable: ", token)
 		return token, exists
 	}
 
 	// Check for credentials file specified in provider config
 	if credFile, ok := d.GetOk("credential_file"); ok {
 		token, err := readTokenFromFile(credFile.(string))
+		fmt.Println("[DEBUG] PRINTING TOKEN from file: ", token)
 		if err == nil {
 			return token, exists
 		}
@@ -155,6 +166,8 @@ func getToken(d *schema.ResourceData) (interface{}, bool) {
 	homeDir, err := getHomeDir()
 	if err == nil {
 		token, err := readTokenFromFile(filepath.Join(homeDir, ".civo.json"))
+		fmt.Println("[DEBUG] PRINTING TOKEN from cli: ", token)
+
 		if err == nil {
 			return token, exists
 		}

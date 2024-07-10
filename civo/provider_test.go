@@ -28,6 +28,16 @@ func TestProvider_impl(t *testing.T) {
 
 // TestToken tests the token configuration
 func TestToken(t *testing.T) {
+	// Testcase for backward compatibility
+	t.Run("reading token from token variable", func(t *testing.T) {
+		const testToken = "123456789"
+
+		raw := map[string]interface{}{
+			"token": testToken,
+		}
+		configureProvider(t, raw)
+	})
+
 	t.Run("reading token from environment variable", func(t *testing.T) {
 		const testToken = "env12345"
 		oldToken := os.Getenv("CIVO_TOKEN")
