@@ -22,6 +22,8 @@ import (
 	"github.com/civo/terraform-provider-civo/civo/size"
 	"github.com/civo/terraform-provider-civo/civo/ssh"
 	"github.com/civo/terraform-provider-civo/civo/volume"
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -42,7 +44,8 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("CIVO_TOKEN", ""),
 				Description: "This is the Civo API token. Alternatively, this can also be specified using `CIVO_TOKEN` environment variable.",
-				Deprecated:  "\"token\" attribute is deprecated. Moving forward, please set the appropriate environment variable or use the \"credential_file\" attribute.",
+				Deprecated:       "",
+				ValidateDiagFunc: validateTokenUsage,
 			},
 			"credential_file": {
 				Type:        schema.TypeString,
@@ -146,13 +149,22 @@ func getToken(d *schema.ResourceData) (interface{}, bool) {
 	var exists = true
 
 	// Gets you the token atrribute value or falls back to reading CIVO_TOKEN environment variable
+	if token:= os.Getenv("CIVO_TOKEN"); token != "" {
+		log.Printf("\033[33m[DEBUG]\033[0m \033[32m Printing token from env variable:\033[0m \033[34m%s\033[0m", token)
+		return token, exists
+	}
+	
+
+	// Gets you the token atrribute value or falls back to reading CIVO_TOKEN environment variable
 	if token, ok := d.GetOk("token"); ok {
+		log.Printf("\033[33m[DEBUG]\033[0m \033[32m Printing token from token variable:\033[0m \033[34m%s\033[0m", token)
 		return token, exists
 	}
 
 	// Check for credentials file specified in provider config
 	if credFile, ok := d.GetOk("credential_file"); ok {
 		token, err := readTokenFromFile(credFile.(string))
+		log.Printf("\033[33m[DEBUG]\033[0m \033[32m Printing token from credential file:\033[0m \033[34m%s\033[0m", token)
 		if err == nil {
 			return token, exists
 		}
@@ -162,6 +174,7 @@ func getToken(d *schema.ResourceData) (interface{}, bool) {
 	homeDir, err := getHomeDir()
 	if err == nil {
 		token, err := readTokenFromFile(filepath.Join(homeDir, ".civo.json"))
+		log.Printf("\033[33m[DEBUG]\033[0m \033[32m Printing token from cli config:\033[0m \033[34m%s\033[0m", token)
 		if err == nil {
 			return token, exists
 		}
@@ -187,14 +200,46 @@ func readTokenFromFile(path string) (string, error) {
 	}
 
 	var config struct {
-		APIKeys struct {
-			Token string `json:"CIVO_TOKEN"`
-		} `json:"apikeys"`
+		APIKeys map[string]string `json:"apikeys"`
+		Meta    struct {
+			CurrentAPIKey string `json:"current_apikey"`
+		} `json:"meta"`
 	}
 
 	if err := json.Unmarshal(data, &config); err != nil {
 		return "", err
 	}
 
-	return config.APIKeys.Token, nil
+	// Get the current API key name
+	currentKeyName := config.Meta.CurrentAPIKey
+
+	// Fetch the corresponding token
+	token, ok := config.APIKeys[currentKeyName]
+
+	if !ok {
+		return "", fmt.Errorf("API key '%s' not found", currentKeyName)
+	}
+
+
+	return token, nil
+}
+
+func validateTokenUsage(v interface{}, path cty.Path) diag.Diagnostics {
+	val := v.(string)
+	
+	// Ensures warning is not shown when "CIVO_TOKEN" environment variable is set.
+	if token := os.Getenv("CIVO_TOKEN"); token != ""{
+		val = ""
+	}
+	var diags diag.Diagnostics
+
+	if val != "" {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  "Deprecated Attribute Usage",
+			Detail:   "The \"token\" attribute is deprecated. Please use the CIVO_TOKEN environment variable or the credential_file attribute instead.",
+		})
+	}
+
+	return diags
 }
