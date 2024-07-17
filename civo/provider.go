@@ -40,10 +40,12 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"token": {
+
 				Type:        schema.TypeString,
 				Optional:    true,
 				DefaultFunc: schema.EnvDefaultFunc("CIVO_TOKEN", ""),
 				Description: "This is the Civo API token. Alternatively, this can also be specified using `CIVO_TOKEN` environment variable.",
+
 				Deprecated:       "",
 				ValidateDiagFunc: validateTokenUsage,
 			},
@@ -149,11 +151,10 @@ func getToken(d *schema.ResourceData) (interface{}, bool) {
 	var exists = true
 
 	// Gets you the token atrribute value or falls back to reading CIVO_TOKEN environment variable
-	if token:= os.Getenv("CIVO_TOKEN"); token != "" {
+	if token := os.Getenv("CIVO_TOKEN"); token != "" {
 		log.Printf("\033[33m[DEBUG]\033[0m \033[32m Printing token from env variable:\033[0m \033[34m%s\033[0m", token)
 		return token, exists
 	}
-	
 
 	// Gets you the token atrribute value or falls back to reading CIVO_TOKEN environment variable
 	if token, ok := d.GetOk("token"); ok {
@@ -220,15 +221,15 @@ func readTokenFromFile(path string) (string, error) {
 		return "", fmt.Errorf("API key '%s' not found", currentKeyName)
 	}
 
-
 	return token, nil
 }
 
 func validateTokenUsage(v interface{}, path cty.Path) diag.Diagnostics {
 	val := v.(string)
-	
+
 	// Ensures warning is not shown when "CIVO_TOKEN" environment variable is set.
-	if token := os.Getenv("CIVO_TOKEN"); token != ""{
+	if token := os.Getenv("CIVO_TOKEN"); token != "" {
+
 		val = ""
 	}
 	var diags diag.Diagnostics
