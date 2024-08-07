@@ -135,6 +135,13 @@ func ResourceInstance() *schema.Resource {
 				Sensitive:   true,
 				Description: "Initial password for login",
 			},
+			"write_password":{
+				Type: schema.TypeBool,
+				Optional: true,
+				Default: false,
+				Description: "Whether to write initial_password to state",
+				ValidateDiagFunc: utils.ValidateProviderVersion,
+			},
 			"private_ip": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -348,7 +355,7 @@ func resourceInstanceRead(_ context.Context, d *schema.ResourceData, m interface
 	d.Set("ram_mb", resp.RAMMegabytes)
 	d.Set("disk_gb", resp.DiskGigabytes)
 	d.Set("initial_user", resp.InitialUser)
-	d.Set("initial_password", resp.InitialPassword)
+	// d.Set("initial_password", resp.InitialPassword)
 	d.Set("source_type", resp.SourceType)
 	d.Set("source_id", resp.SourceID)
 	d.Set("sshkey_id", resp.SSHKeyID)
@@ -362,6 +369,12 @@ func resourceInstanceRead(_ context.Context, d *schema.ResourceData, m interface
 	d.Set("created_at", resp.CreatedAt.UTC().String())
 	d.Set("notes", resp.Notes)
 	d.Set("disk_image", resp.SourceID)
+
+	if ok := d.Get("write_password").(bool); ok{
+		d.Set("initial_password", resp.InitialPassword)		
+	}else{
+		d.Set("initial_password", "")
+	}
 
 	if resp.PublicIP != "" {
 		d.Set("public_ip_required", "create")
